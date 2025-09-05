@@ -27,28 +27,36 @@ def print_time():
 
 
 def parse_arguments():
+    # 2) Load it (override=False will not overwrite existing OS env vars)
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=("/Users/l/.env"), override=True)
+    from p24_code.p24_install import set_litellm_cache
+    set_litellm_cache()
     parser = argparse.ArgumentParser(description="Run AI scientist experiments")
     parser.add_argument(
-        "--skip-idea-generation",
+        "--skip-idea- generation",
         action="store_true",
         help="Skip idea generation and load existing ideas",
     )
     parser.add_argument(
         "--skip-novelty-check",
         action="store_true",
+            default=1 if sys.platform == "darwin" else None,
         help="Skip novelty check and use existing ideas",
     )
     # add type of experiment (nanoGPT, Boston, etc.)
     parser.add_argument(
         "--experiment",
         type=str,
-        default="nanoGPT",
+        default="mobilenetV3",
+        # "nanoGPT",
         help="Experiment to run AI Scientist on.",
     )
     parser.add_argument(
         "--model",
         type=str,
-        default="claude-3-5-sonnet-20240620",
+        default="gpt-4o-2024-05-13",
+        # "claude-3-5-sonnet-20240620",
         choices=AVAILABLE_LLMS,
         help="Model to use for AI Scientist.",
     )
@@ -79,7 +87,7 @@ def parse_arguments():
     parser.add_argument(
         "--num-ideas",
         type=int,
-        default=50,
+        default=1 if sys.platform == "darwin" else 50,
         help="Number of ideas to generate",
     )
     parser.add_argument(
@@ -108,17 +116,19 @@ def check_latex_dependencies():
 
     required_dependencies = ['pdflatex', 'chktex']
     missing_deps = []
+    if sys.platform == "darwin":
+        os.environ["PATH"] = "/Library/TeX/texbin:" + os.environ["PATH"]
 
     for dep in required_dependencies:
         if shutil.which(dep) is None:
             missing_deps.append(dep)
-    
+
     if missing_deps:
         print("Error: Required LaTeX dependencies not found:", file=sys.stderr)
         return False
-    
+
     return True
-    
+
 def worker(
         queue,
         base_dir,
@@ -169,13 +179,17 @@ def do_idea(
     assert not osp.exists(folder_name), f"Folder {folder_name} already exists."
     destination_dir = folder_name
     shutil.copytree(base_dir, destination_dir, dirs_exist_ok=True)
-    with open(osp.join(base_dir, "run_0", "final_info.json"), "r") as f:
-        baseline_results = json.load(f)
+    try:
+        with open(osp.join(base_dir, "run_0", "final_info.json"), "r") as f:
+            baseline_results = json.load(f)
+    except Exception as e:
+        open('/tmp/except.txt', 'a').write(f"{e}, at launch_scientist.py:184\n")
     # Check if baseline_results is a dictionary before extracting means
     if isinstance(baseline_results, dict):
         baseline_results = {k: v["means"] for k, v in baseline_results.items()}
     exp_file = osp.join(folder_name, "experiment.py")
     vis_file = osp.join(folder_name, "plot.py")
+    assert os.path.exists(exp_file), f"{exp_file} does not exist."
     notes = osp.join(folder_name, "notes.txt")
     with open(notes, "w") as f:
         f.write(f"# Title: {idea['Title']}\n")
@@ -360,7 +374,7 @@ if __name__ == "__main__":
     with open(osp.join(base_dir, "ideas.json"), "w") as f:
         json.dump(ideas, f, indent=4)
 
-    novel_ideas = [idea for idea in ideas if idea["novel"]]
+    novel_ideas = ideas if args.skip_novelty_check else [idea for idea in ideas if idea["novel"]]
     # novel_ideas = list(reversed(novel_ideas))
 
     if args.parallel > 0:

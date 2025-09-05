@@ -6,5 +6,13 @@
         "Interestingness": 9,
         "Feasibility": 7,
         "Novelty": 8
+    },
+    {
+        "Name": "normalization_techniques_comparison",
+        "Title": "Comparison of Different Normalization Techniques in Small Convolution Networks",
+        "Experiment": "Modify the ConvNormActivation and InvertedResidual classes to support BatchNorm, LayerNorm, InstanceNorm, and GroupNorm. Train and evaluate models with each normalization technique on CIFAR-10. Compare the results based on accuracy, training loss, validation loss, training stability, and convergence speed. Metrics will be logged and compared across multiple runs to ensure statistical significance.",
+        "Interestingness": 8,
+        "Feasibility": 8,
+        "Novelty": 7
     }
 ]
