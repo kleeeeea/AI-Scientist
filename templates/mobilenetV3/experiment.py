@@ -1,7 +1,9 @@
 import argparse
 import json
 import os
+import platform  # Add platform import
 import random
+import sys
 import time
 from dataclasses import dataclass
 from functools import partial
@@ -11,7 +13,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset  # Add Subset import
 from torchvision import datasets, transforms
 
 
@@ -406,6 +408,12 @@ def get_data_loaders(config):
     else:
         raise ValueError(f"Unknown dataset: {config.dataset}")
 
+    # Limit to 10 samples if running on Mac
+    if platform.system() == 'Darwin':  # Darwin is the system name for macOS
+        print("Detected macOS - limiting datasets to 10 samples for faster testing")
+        train_dataset = Subset(train_dataset, range(3))
+        test_dataset = Subset(test_dataset, range(1))
+
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=config.num_workers)
     test_loader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False, num_workers=config.num_workers)
 
@@ -476,7 +484,7 @@ def train(config):
         })
         print(f'Validation - Loss: {val_loss:.3f}, Acc: {val_acc:.3f}%')
 
-        if val_acc > best_acc:
+        if val_acc >= best_acc:
             best_acc = val_acc
             torch.save(model.state_dict(), os.path.join(config.out_dir, 'best_model.pth'))
 
@@ -527,7 +535,7 @@ def main():
     parser.add_argument("--data_path", type=str, default="./data", help="Path to save/load the dataset")
     parser.add_argument("--batch_size", type=int, default=128, help="Batch size")
     parser.add_argument("--learning_rate", type=float, default=0.01, help="Initial learning rate")
-    parser.add_argument("--epochs", type=int, default=30, help="Number of epochs to train")
+    parser.add_argument("--epochs", type=int, default=3 if sys.platform == "darwin" else 30, help="Number of epochs to train")
     parser.add_argument("--out_dir", type=str, default="run_0", help="Output directory")
     args = parser.parse_args()
 
